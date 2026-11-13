@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Una carta para ti</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Pinyon+Script&display=swap" rel="stylesheet">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+ --night:#120b07;--glow:#3a1d0c;--paper:#e3c48d;--ink:#3b2412;--rose:#9c2a2a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--night)}
+body{background:radial-gradient(ellipse at 50% 45%,var(--glow) 0%,#1b0f08 45%,#0a0604 100%);font-family:Georgia,serif;color:#e8cfa3}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+
+/* ---------- Rollo ---------- */
+#roll{position:absolute;display:flex;flex-direction:column;align-items:center;gap:26px;cursor:pointer;background:none;border:0;padding:0;color:inherit;font:inherit;
+ transition:opacity .9s,transform .9s}
+#roll.gone{opacity:0;transform:scale(1.5);pointer-events:none}
+.cyl{position:relative;width:min(320px,74vw);height:118px;border-radius:14px/59px;animation:bob 5s ease-in-out infinite;
+ background:linear-gradient(#6e4420 0%,#c99555 14%,#f1d6a2 34%,#f7e4bb 48%,#dcb273 68%,#a0703a 88%,#5e3718 100%);
+ box-shadow:0 22px 40px rgba(0,0,0,.7),0 0 60px rgba(230,140,50,.18)}
+.cyl::before,.cyl::after{content:"";position:absolute;top:0;bottom:0;width:34px;border-radius:50%;
+ background:radial-gradient(ellipse,#6b4119 0 14%,#d7ab6c 15% 28%,#8a5a2a 29% 38%,#e4bd80 39% 56%,#8a5a2a 57% 100%);box-shadow:0 0 0 1px #4a2a10}
+.cyl::before{left:-12px}.cyl::after{right:-12px}
+.cord{position:absolute;top:-2px;bottom:-2px;width:9px;background:linear-gradient(90deg,#5a3216,#a86d36,#5a3216);border-radius:3px}
+.cord.a{left:40%}.cord.b{left:calc(40% + 13px)}
+.seal{position:absolute;left:calc(40% - 15px);top:50%;width:46px;height:46px;margin-top:-23px;border-radius:50%;
+ background:radial-gradient(circle at 35% 30%,#d24a3a,#8c1d17 70%);box-shadow:0 3px 8px rgba(0,0,0,.6),inset 0 0 0 3px rgba(0,0,0,.15);
+ display:grid;place-items:center;color:#f6c9bd;font-size:22px}
+.hint{font-style:italic;font-size:1.05rem;letter-spacing:.04em;animation:pulse 2.6s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-8px) rotate(-.6deg)}}
+@keyframes pulse{50%{opacity:.35}}
+
+/* ---------- Carta abierta ---------- */
+#paper{position:absolute;visibility:hidden;width:min(660px,94vw);box-sizing:border-box;padding:4vh 7% 3vh;
+ clip-path:inset(47% 6% 47% 6%);transition:clip-path 1.6s cubic-bezier(.3,.7,.2,1)}
+#paper.open{visibility:visible;clip-path:inset(0)}
+#paper.burning{clip-path:none;transition:none}
+#paper::before{content:"";position:absolute;inset:-5px;z-index:-1;filter:url(#rough);
+ background:radial-gradient(ellipse at 50% 50%,rgba(255,236,190,.55),transparent 70%),
+ radial-gradient(circle at 20% 30%,rgba(140,90,40,.25),transparent 40%),radial-gradient(circle at 80% 75%,rgba(120,70,30,.3),transparent 45%),var(--paper);
+ box-shadow:inset 0 0 40px 14px rgba(110,62,22,.65),0 25px 60px rgba(0,0,0,.7)}
+#paper h1{font:400 clamp(30px,5.6vh,46px)/1.1 "Pinyon Script",cursive;text-align:center;margin:0 0 2.2vh;color:var(--ink)}
+#paper p{font:500 var(--fs,18px)/1.32 Caveat,"Segoe Script",cursive;color:var(--ink);margin:0 0 .6em;text-wrap:pretty}
+#paper .sig:empty{display:none}
+#paper .sig{text-align:right;font-size:clamp(18px,3.2vh,27px)}
+#paper svg.vine{display:block;width:100%;height:auto;margin-top:2vh}
+#fire{position:absolute;inset:0;pointer-events:none;z-index:3}
+#ash{position:fixed;inset:0;pointer-events:none;z-index:5}
+
+#again{position:fixed;left:50%;bottom:calc(5vh + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:6;opacity:0;pointer-events:none;
+ background:none;border:1px solid #8a6a43;color:#e8cfa3;padding:.7em 1.6em;border-radius:999px;font:italic 1rem Georgia,serif;cursor:pointer;transition:opacity 1.2s}
+#again.show{opacity:1;pointer-events:auto}
+#again:hover{background:rgba(232,207,163,.1)}
+#mute{position:fixed;right:14px;top:calc(14px + env(safe-area-inset-top,0px));z-index:7;width:42px;height:42px;border-radius:50%;
+ border:1px solid #8a6a43;background:rgba(0,0,0,.35);color:#e8cfa3;font-size:18px;cursor:pointer;display:none}
+button:focus-visible{outline:2px solid #f0b463;outline-offset:3px}
+@media (prefers-reduced-motion:reduce){.cyl,.hint{animation:none}#paper{transition-duration:.01s}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+<feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="4" seed="7"/><feDisplacementMap in="SourceGraphic" scale="14"/></filter></svg>
+
+<audio id="bgm" loop preload="none"></audio>
+<button id="mute" aria-label="Silenciar música">♪</button>
+
+<div id="stage">
+  <button id="roll" aria-label="Abrir la carta">
+    <div class="cyl"><i class="cord a"></i><i class="cord b"></i><span class="seal"></span></div>
+    <span class="hint">Toca para abrir</span>
+  </button>
+
+  <article id="paper">
+    <div id="body"></div>
+    <svg class="vine" viewBox="0 0 400 46" aria-hidden="true">
+      <g fill="none" stroke="#7a2a22" stroke-width="1.6" stroke-linecap="round">
+        <path d="M6 30C50 6 90 46 134 24S190 8 200 24s70 22 110-2 60 6 84 4"/>
+        <path d="M60 16q6 8-2 14M140 28q-4-10 4-14M262 24q4-10 12-8M330 18q6 8 0 14"/>
+      </g>
+      <g fill="#b3332c">
+        <circle cx="30" cy="16" r="4"/><circle cx="96" cy="32" r="3.5"/><circle cx="164" cy="14" r="4"/>
+        <circle cx="236" cy="30" r="3.5"/><circle cx="300" cy="22" r="4"/><circle cx="366" cy="14" r="3.5"/>
+      </g>
+      <g fill="#6d7a3a"><ellipse cx="46" cy="22" rx="6" ry="2.6" transform="rotate(-30 46 22)"/><ellipse cx="116" cy="30" rx="6" ry="2.6" transform="rotate(25 116 30)"/>
+        <ellipse cx="204" cy="22" rx="6" ry="2.6" transform="rotate(-20 204 22)"/><ellipse cx="282" cy="26" rx="6" ry="2.6" transform="rotate(30 282 26)"/><ellipse cx="346" cy="20" rx="6" ry="2.6" transform="rotate(-25 346 20)"/></g>
+    </svg>
+    <canvas id="fire"></canvas>
+  </article>
+</div>
+<canvas id="ash"></canvas>
+<button id="again">Volver a leerla</button>
+
+<script>
+/* =========================================================
+   EDITA AQUÍ
+   ========================================================= */
+const CONFIG = {
+  // 🎵 Tu música: pega aquí el enlace directo a tu archivo (.mp3). Déjalo vacío para no usar música.
+  musicUrl: "dia8.mp3",
+  musicVolume: 0.6,
+
+  paragraphs: [
+    "Desde que te conocí siempre creí que serías alguien más y que al mes desaparecerías como los que llamé amigos, pero no fue así. Desde que llegaste siempre pensé que eras alguien que resalta, por así decirlo.",
+    "La primera vez que te escribí, lo que pensé realmente fue: «¿quién es esta? Es como todos, seguro hará lo mismo que ellos». Desconfiaba. Pero poco a poco noté que no estabas bien o pasabas por algo, y quería hacerme el desentendido o como que no me importaba, pero claro que me importaba; no puedo ver a alguien pasar por algo similar a lo que yo viví.",
+    "Créeme que quise ayudarte de todas maneras, aunque me dijiste que no había solución. Al final te levantaste sola y supe que eras igual de fuerte que yo —aunque no lo creas de ti, claro, mentalmente—, y sigo creyendo que te levantarás a pesar de todo. Sigue así.",
+    "Y si no puedes seguir así, te diría que cuentes conmigo, pero ya tú lo has dicho: si quiero darte la mano y levantarte si llegas a caer, no podré hacer nada, ni que lo intente. La verdad es que tú puedes sola; no quieres ayuda, no necesitas ayuda. Es lo que me has hecho entender todo este tiempo, y tampoco es que yo pueda hacer mucho (quisiera, pero no), así que debes resistir.",
+    "Y si un día me necesitas, créeme que haré lo posible por seguir aquí. Qué importa el destino, me niego a caer... o eso creo, xd.",
+    "Te quiero, Nicole, y te lo recalco un día más, aunque no lo parezca."
+  ],
+  signature: "",
+
+  startBurnAfter: 1,    // segundos que espera antes de empezar a quemarse
+  burnSeconds: 85      // segundos que tarda en quemarse toda la carta
+};
+/* ========================================================= */
+
+const $ = s => document.querySelector(s);
+const roll = $('#roll'), paper = $('#paper'), fire = $('#fire'), ash = $('#ash'), again = $('#again');
+const bgm = $('#bgm'), mute = $('#mute');
+const fx = fire.getContext('2d'), ax = ash.getContext('2d');
+
+$('#body').innerHTML = CONFIG.paragraphs.map(t => '<p></p>').join('') + '<p class="sig"></p>';
+[...document.querySelectorAll('#body p')].forEach((p, i) => p.textContent = i < CONFIG.paragraphs.length ? CONFIG.paragraphs[i] : CONFIG.signature);
+
+if (CONFIG.musicUrl) { bgm.src = CONFIG.musicUrl; bgm.volume = 0; mute.style.display = 'block'; }
+mute.onclick = () => { bgm.muted = !bgm.muted; mute.textContent = bgm.muted ? '✕' : '♪'; };
+function fadeInMusic() {
+  if (!CONFIG.musicUrl) return;
+  bgm.play().catch(() => {});
+  let v = 0; const t = setInterval(() => { v = Math.min(CONFIG.musicVolume, v + .03); bgm.volume = v; if (v >= CONFIG.musicVolume) clearInterval(t); }, 120);
+}
+
+let W, H, noise, prog = -0.08, raf, timers = [], parts = [], burning = false, finished = false, last = 0;
+
+function sizeAsh() { ash.width = innerWidth; ash.height = innerHeight; }
+addEventListener('resize', sizeAsh); sizeAsh();
+
+function buildNoise() {
+  W = paper.clientWidth; H = paper.clientHeight;
+  fire.width = W; fire.height = H;
+  const n = []; let v = 0;
+  for (let i = 0; i <= W / 2; i++) { v += (Math.random() - .5) * 7 - v * .09; v = Math.max(-16, Math.min(16, v)); n.push(v); }
+  noise = n.map((x, i) => (x + (n[i - 1] ?? x) + (n[i + 1] ?? x)) / 3);
+  let d = `M0 ${H + noise[0]}`;
+  noise.forEach((y, i) => d += `L${i * 2} ${H + y}`);
+  d += `L${W} ${2 * H}L0 ${2 * H}Z`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${2 * H}"><path d="${d}" fill="#000"/></svg>`;
+  const url = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+  paper.style.cssText += `;-webkit-mask-image:${url};mask-image:${url};-webkit-mask-size:100% 200%;mask-size:100% 200%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat`;
+}
+function setProg(p) {
+  prog = p;
+  const pos = ((1 - p) * 100) + '%';
+  paper.style.webkitMaskPosition = '0 ' + pos; paper.style.maskPosition = '0 ' + pos;
+}
+
+function drawFire(t) {
+  fx.clearRect(0, 0, W, H);
+  if (prog < -0.05 || prog > 1.1) return;
+  const g = fx.createLinearGradient(0, 0, 0, 26);
+  g.addColorStop(0, 'rgba(255,230,120,.95)'); g.addColorStop(.12, 'rgba(255,130,30,.9)');
+  g.addColorStop(.3, 'rgba(70,25,8,.85)'); g.addColorStop(1, 'rgba(30,12,4,0)');
+  fx.fillStyle = g;
+  for (let i = 0; i < noise.length; i++) {
+    const e = prog * H + noise[i] + Math.sin(t / 90 + i * .7) * 1.2;
+    fx.save(); fx.translate(i * 2, e); fx.globalAlpha = .8 + .2 * Math.sin(t / 60 + i); fx.fillRect(0, -1, 2, 26); fx.restore();
+  }
+}
+
+function spawn(dt) {
+  if (!burning || finished) return;
+  const r = paper.getBoundingClientRect();
+  const n = Math.min(10, Math.round(dt * 0.12));
+  for (let k = 0; k < n && parts.length < 700; k++) {
+    const i = Math.floor(Math.random() * noise.length), x = r.left + i * 2, y = r.top + prog * H + noise[i];
+    if (y < r.top || y > r.bottom) continue;
+    const ember = Math.random() < .28;
+    parts.push(ember
+      ? { x, y, vx: (Math.random() - .5) * .5, vy: -.4 - Math.random() * 1.1, s: 1 + Math.random() * 1.6, life: 0, max: 1200 + Math.random() * 1000, c: [255, 150 + Math.random() * 80 | 0, 40], ember: 1 }
+      : { x, y, vx: (Math.random() - .5) * .5, vy: .2 + Math.random() * .5, s: 2 + Math.random() * 5, life: 0, max: 6000 + Math.random() * 4000, rot: Math.random() * 6, vr: (Math.random() - .5) * .08, c: [40, 25, 14], sh: Math.random() * 40 | 0, ash: 1 });
+  }
+}
+
+function drawAsh(dt, t) {
+  ax.clearRect(0, 0, ash.width, ash.height);
+  const floor = ash.height - 3;
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i]; p.life += dt;
+    if (p.life > p.max) { parts.splice(i, 1); continue; }
+    const f = p.life / p.max;
+    if (p.ember) { p.x += p.vx + Math.sin(t / 200 + i) * .3; p.y += p.vy; ax.fillStyle = `rgba(${p.c[0]},${p.c[1]},${p.c[2]},${1 - f})`; ax.beginPath(); ax.arc(p.x, p.y, p.s * (1 - f * .5), 0, 7); ax.fill(); continue; }
+    if (p.y < floor) { p.vy = Math.min(1.5, p.vy + .008); p.x += p.vx + Math.sin(t / 700 + i) * .35; p.y += p.vy; p.rot += p.vr; } else p.y = floor;
+    const g = Math.min(255, 40 + f * 5 * 60 + p.sh) | 0, a = f > .8 ? (1 - f) * 5 : .9;
+    ax.save(); ax.translate(p.x, p.y); ax.rotate(p.rot || 0); ax.fillStyle = `rgba(${g},${g - 3},${g - 6},${a})`;
+    ax.beginPath(); ax.moveTo(-p.s, -p.s * .4); ax.lineTo(p.s * .3, -p.s * .8); ax.lineTo(p.s, p.s * .2); ax.lineTo(-p.s * .2, p.s * .7); ax.fill(); ax.restore();
+  }
+}
+
+function loop(t) {
+  const dt = Math.min(60, t - (last || t)); last = t;
+  if (burning && !finished) {
+    setProg(prog + dt / (CONFIG.burnSeconds * 1000) * 1.16);
+    if (prog >= 1.08) { finished = true; paper.style.visibility = 'hidden'; fx.clearRect(0, 0, W, H); setTimeout(() => again.classList.add('show'), 5000); }
+  }
+  if (!finished) drawFire(t);
+  spawn(dt); drawAsh(dt, t);
+  raf = requestAnimationFrame(loop);
+}
+
+function startBurn() {
+  buildNoise(); setProg(-0.08);
+  paper.classList.add('burning'); burning = true;
+}
+
+function fitText() {
+  let fs = 24;
+  do { paper.style.setProperty('--fs', fs + 'px'); fs -= .5; } while (paper.offsetHeight > innerHeight * .92 && fs > 9);
+}
+addEventListener('resize', () => { if (!burning) fitText(); });
+
+roll.onclick = () => {
+  fitText();
+  fadeInMusic();
+  roll.classList.add('gone');
+  paper.classList.add('open');
+  timers.push(setTimeout(startBurn, 1700 + CONFIG.startBurnAfter * 1000));
+  cancelAnimationFrame(raf); last = 0; raf = requestAnimationFrame(loop);
+};
+
+again.onclick = () => {
+  again.classList.remove('show'); timers.forEach(clearTimeout); timers = [];
+  burning = finished = false; parts = [];
+  paper.classList.remove('open', 'burning'); paper.style.visibility = '';
+  paper.style.webkitMaskImage = paper.style.maskImage = 'none';
+  roll.classList.remove('gone');
+};
+</script>
+</body>
+</html>
